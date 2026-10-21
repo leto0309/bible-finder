@@ -1,0 +1,8 @@
+*.sqlite3 binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.json text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.yml text eol=lf

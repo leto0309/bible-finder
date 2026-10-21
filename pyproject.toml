@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "bible-finder"
+version = "1.0.0"
+description = "Offline Chinese and English Bible search for Windows"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.setuptools.package-data]
+appcore = ["data/*.sqlite3", "data/*.json"]
+[project.scripts]
+bible-finder = "appcore.main:main"
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+# Warnings in tests (deprecations, unclosed resources) fail verification instead of scrolling past.
+filterwarnings = ["error"]
+[tool.ruff]
+target-version = "py311"
+[tool.ruff.lint]
+# Explicit rules, so a ruff upgrade cannot silently change what verify enforces:
+# syntax and statement errors plus pyflakes (unused imports and variables, undefined names).
+select = ["E4", "E7", "E9", "F"]
