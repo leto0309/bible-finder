@@ -88,6 +88,14 @@ class BibleApp:
         about = tk.Button(rail, text="使用说明与数据来源", command=self.about, bg=GREEN, fg="#DABC79", activebackground=GREEN, activeforeground="white", bd=0, cursor="hand2", font=(FONT, 9))
         about.pack(side="bottom", anchor="w", padx=21, pady=(0, 15))
 
+        # Point-sized fonts grow with Windows DPI; pixel-sized frames do not.
+        # Reserve every child's requested width plus its horizontal margins.
+        rail.configure(width=max(
+            170,
+            *(child.winfo_reqwidth() + 2 * int(child.pack_info()["padx"])
+              for child in rail.winfo_children()),
+        ))
+
         main = tk.Frame(self.root, bg=BG)
         main.pack(side="left", fill="both", expand=True, padx=30, pady=22)
         top = tk.Frame(main, bg=BG)

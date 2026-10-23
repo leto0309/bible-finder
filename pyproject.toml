@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 [project]
 name = "bible-finder"
-version = "1.0.0"
+version = "1.0.1"
 description = "Offline Chinese and English Bible search for Windows"
 readme = "README.md"
 license = "MIT"

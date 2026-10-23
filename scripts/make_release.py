@@ -11,7 +11,7 @@ def main():
     executable = ROOT / "dist/bible-finder.exe"
     if not executable.is_file():
         raise FileNotFoundError("Run scripts/package.ps1 first")
-    output = ROOT / "dist/BibleFinder-1.0.0-windows-x64.zip"
+    output = ROOT / "dist/BibleFinder-1.0.1-windows-x64.zip"
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         archive.write(executable, "BibleFinder/bible-finder.exe")
         for relative in ["README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "docs/data-sources.md", "docs/verification.md", "docs/images/app.png"]:

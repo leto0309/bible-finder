@@ -6,7 +6,7 @@ Windows 免安装、完全离线的圣经经文查询工具。支持经文出处
 
 ## 下载与使用
 
-在本仓库 **Releases** 下载 `BibleFinder-1.0.0-windows-x64.zip`，解压到一个可写入的文件夹，双击 `bible-finder.exe`。
+在本仓库 **Releases** 下载 `BibleFinder-1.0.1-windows-x64.zip`，解压到一个可写入的文件夹，双击 `bible-finder.exe`。
 
 - 支持 Windows 10 / 11，x64；不需要管理员权限。
 - 三个完整译本：和合本简体、和合本繁体、World English Bible（WEB）。每个译本均有 66 卷、1,189 章。

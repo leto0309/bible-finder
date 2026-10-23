@@ -30,7 +30,7 @@ jobs:
         shell: pwsh
         run: |
           if ($env:VERSION -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$') { throw 'Invalid version' }
-          if ($env:VERSION -ne '1.0.0') { throw 'Update the project and release version before creating another release.' }
+          if ($env:VERSION -ne '1.0.1') { throw 'Update the project and release version before creating another release.' }
           if (Test-Path requirements-dev.txt) { python -m pip install -r requirements-dev.txt; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
           if (Test-Path package.json) { if (Test-Path package-lock.json) { npm ci } else { npm install --ignore-scripts }; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
       - run: ./scripts/package.ps1
