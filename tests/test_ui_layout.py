@@ -95,8 +95,11 @@ def test_minimum_window_keeps_every_control_visible(tmp_path, scale, make_root):
     app = BibleApp(root, tmp_path)
     try:
         assert all(actual <= design for actual, design in zip(root.minsize(), app.design_size(MIN_SIZE)))
+        root.minsize(*app.design_size(MIN_SIZE))
         root.geometry("%dx%d" % app.design_size(MIN_SIZE))
         wait_for_result(app)
+        root.update()
+        assert (root.winfo_width(), root.winfo_height()) == app.design_size(MIN_SIZE)
         exercise_modes(app)
         assert not app.compact
     finally:
@@ -112,8 +115,13 @@ def test_screen_limited_window_on_1080p_keeps_actions_visible(tmp_path, scale, f
     app = BibleApp(root, tmp_path)
     try:
         (min_w, min_h), _ = app.window_sizes(1920, 1080)
+        # Replace the minimum derived from this machine's real screen, so a large
+        # monitor cannot enlarge the simulated 1080p window.
+        root.minsize(min_w, min_h)
         root.geometry(f"{min_w}x{min_h}")
         wait_for_result(app)
+        root.update()
+        assert (root.winfo_width(), root.winfo_height()) == (min_w, min_h)
         app.preferences.font_size = font_size
         app._apply_text_fonts()
         exercise_modes(app)
