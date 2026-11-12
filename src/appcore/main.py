@@ -43,6 +43,10 @@ def smoke_test(app):
     assert len(app.rows) == 3
     app.read_selected()
     assert app.mode == "chapter" and len(app.rows) == 36 and app.selected.verse == 16
+    assert app.page_title.cget("text") == "整章阅读" and str(app.context_button["state"]) == "disabled"
+    app.move_selection(1)
+    assert app.selected.verse == 17
+    app.move_selection(-1)
     app.copy_verse()
     assert "3:16" in app.root.clipboard_get()
     if app.selected.key not in app.preferences.bookmarks:
@@ -58,7 +62,7 @@ def smoke_test(app):
     wait_search()
     assert "God so loved" in app.rows[0].text
     app.close()
-    return {"status": "passed", "gui": "search, pagination, context, copy, bookmarks, chapter boundaries, version switch"}
+    return {"status": "passed", "gui": "search, pagination, context, arrow selection, copy, bookmarks, chapter boundaries, version switch"}
 
 
 def main(argv=None):
