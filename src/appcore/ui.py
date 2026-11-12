@@ -56,6 +56,7 @@ class BibleApp:
         self.bookmark_page = 1
         self.bookmark_pages = 1
         self._base_bg = {}
+        self.compact = False
         self.version = tk.StringVar(value=VERSIONS[self.preferences.version])
         self.query = tk.StringVar(value="约 3:16")
         self.scope = tk.StringVar(value="整本圣经")
@@ -74,6 +75,7 @@ class BibleApp:
         self.root.bind("<Control-d>", lambda _: self.toggle_bookmark())
         self.root.bind("<Up>", lambda event: self._arrow(event, -1))
         self.root.bind("<Down>", lambda event: self._arrow(event, 1))
+        self.root.bind("<Configure>", self._on_resize, add="+")
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self._poll_id = self.root.after(40, self._poll)
         self.search()
@@ -86,13 +88,17 @@ class BibleApp:
         """A 96-DPI size scaled to the display, before fitting it on the screen."""
         return round(size[0] * self.scale), round(size[1] * self.scale)
 
-    def _place_window(self):
-        screen_w, screen_h = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+    def window_sizes(self, screen_w, screen_h):
+        """(minimum, default) window sizes for a screen, leaving room for the title bar and taskbar."""
         min_w, min_h = self.design_size(MIN_SIZE)
         width, height = self.design_size(DEFAULT_SIZE)
-        # Leave room for the title bar and taskbar, which the screen size includes.
         min_w, min_h = min(min_w, int(screen_w * 0.9)), min(min_h, int(screen_h * 0.8))
         width, height = max(min_w, min(width, int(screen_w * 0.92))), max(min_h, min(height, int(screen_h * 0.8)))
+        return (min_w, min_h), (width, height)
+
+    def _place_window(self):
+        screen_w, screen_h = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        (min_w, min_h), (width, height) = self.window_sizes(screen_w, screen_h)
         self.root.minsize(min_w, min_h)
         x, y = max(0, (screen_w - width) // 2), max(0, (screen_h - height) // 2 - round(20 * self.scale))
         self.root.geometry(f"{width}x{height}+{x}+{y}")
@@ -319,7 +325,8 @@ class BibleApp:
         detail.grid(row=0, column=1, sticky="nsew")
         detail.columnconfigure(0, weight=1)
         self.detail = detail
-        self.label(detail, "选中经文", 9, "#6E7F67").grid(row=0, column=0, sticky="w")
+        self.detail_caption = self.label(detail, "选中经文", 9, "#6E7F67")
+        self.detail_caption.grid(row=0, column=0, sticky="w")
         self.detail_title = self.label(detail, "点击左侧经文", 15, bold=True, anchor="w", justify="left")
         self.detail_title.grid(row=1, column=0, sticky="ew", pady=(self._px(6), 0))
         self.detail_version = self.label(detail, "", 9, MUTED, anchor="w")
@@ -339,18 +346,53 @@ class BibleApp:
         actions = tk.Frame(detail, bg=PANEL)
         actions.grid(row=5, column=0, sticky="ew", pady=(self._px(12), self._px(8)))
         actions.columnconfigure((0, 1), weight=1, uniform="actions")
+        self.actions = actions
         self.copy_button = self.button(actions, "⧉  复制经文", self.copy_verse)
         self.copy_button.grid(row=0, column=0, sticky="ew", padx=(0, self._px(4)))
         self.bookmark_button = self.button(actions, "☆  收藏", self.toggle_bookmark)
         self.bookmark_button.grid(row=0, column=1, sticky="ew", padx=(self._px(4), 0))
-        self.context_button = self.button(detail, "阅读整章，查看上下文  →", self.read_selected, "primary", pady=8)
-        self.context_button.grid(row=6, column=0, sticky="ew")
-        self.label(detail, "↑ ↓ 切换经文 · 双击打开整章", 8, "#7F8D80").grid(row=7, column=0, sticky="w", pady=(self._px(8), 0))
-        # The text row absorbs any shortage, but never below three lines, so the
-        # actions below it always stay inside the panel.
+        self.context_button = self.button(detail, "", self.read_selected, "primary", pady=8)
+        self.detail_hint = self.label(detail, "↑ ↓ 切换经文 · 双击打开整章", 8, "#7F8D80")
+        # The text row absorbs any shortage down to its minimum, so the actions
+        # below it stay inside the panel; compact mode lowers that minimum.
         detail.rowconfigure(4, weight=1)
-        self._apply_text_fonts()
+        self._place_detail_actions()
         detail.bind("<Configure>", lambda event: self.detail_title.configure(wraplength=max(160, event.width - 2 * pad)))
+
+    def _place_detail_actions(self):
+        """Full layout, or (compact) one action row with no caption, hint or subtitle."""
+        if self.compact:
+            self.detail_caption.grid_remove()
+            self.detail_hint.grid_remove()
+            self.page_subtitle.pack_forget()
+            self.actions.columnconfigure(2, weight=1, uniform="actions")
+            self.context_button.grid(in_=self.actions, row=0, column=2, sticky="ew", padx=(self._px(8), 0))
+        else:
+            self.detail_caption.grid()
+            self.detail_hint.grid(row=7, column=0, sticky="w", pady=(self._px(8), 0))
+            if not self.page_subtitle.winfo_manager():
+                self.page_subtitle.pack(anchor="w", pady=(self._px(1), 0))
+            self.actions.columnconfigure(2, weight=0, uniform="")
+            self.context_button.grid(in_=self.detail, row=6, column=0, sticky="ew", padx=0)
+        self.copy_button.configure(text="⧉ 复制" if self.compact else "⧉  复制经文")
+        self._context_label()
+        self._show_bookmark_state(bool(self.selected) and self.selected.key in self.preferences.bookmarks)
+        self._apply_text_fonts()
+
+    def _context_label(self):
+        if self.mode == "chapter":
+            text = "整章中" if self.compact else "正在阅读整章"
+        else:
+            text = "整章 →" if self.compact else "阅读整章，查看上下文  →"
+        self.context_button.configure(text=text)
+
+    def _on_resize(self, event):
+        if event.widget is not self.root:
+            return
+        compact = event.height < self.design_size(MIN_SIZE)[1] - 1
+        if compact != self.compact:
+            self.compact = compact
+            self._place_detail_actions()
 
     def _autoscroll(self, scrollbar, target, first, last):
         # Stable: hiding the bar only widens the text, so it can never start overflowing again.
@@ -365,8 +407,10 @@ class BibleApp:
         self.results_text.configure(font=(FONT, size))
         self.results_text.tag_configure("reference", font=(FONT, max(9, size - 2), "bold"))
         self.detail_text.configure(font=(FONT, size + 1))
+        # Keep one line guaranteed; the weighted row takes all remaining space, so
+        # normal sizes show several lines while large fonts never push the actions out.
         line = tkfont.Font(root=self.root, family=FONT, size=size + 1).metrics("linespace") + self._px(4)
-        self.detail.rowconfigure(4, minsize=3 * line + self._px(6))
+        self.detail.rowconfigure(4, minsize=line + self._px(6))
         self._enable(self.font_down, size > 10)
         self._enable(self.font_up, size < 20)
 
@@ -524,14 +568,14 @@ class BibleApp:
         self._enable(self.copy_button, bool(verse))
         self._enable(self.bookmark_button, bool(verse))
         self._enable(self.context_button, bool(verse) and self.mode != "chapter")
-        self.context_button.configure(text="正在阅读整章" if self.mode == "chapter" else "阅读整章，查看上下文  →")
+        self._context_label()
         self._show_bookmark_state(bool(verse) and verse.key in self.preferences.bookmarks)
 
     def _show_bookmark_state(self, saved):
         if saved:
-            self._set_base(self.bookmark_button, "#FBF3DF", text="★  已收藏", fg="#8A6516", highlightbackground=GOLD, activebackground="#F6E9C6", activeforeground="#8A6516")
+            self._set_base(self.bookmark_button, "#FBF3DF", text="★ 已收藏" if self.compact else "★  已收藏", fg="#8A6516", highlightbackground=GOLD, activebackground="#F6E9C6", activeforeground="#8A6516")
         else:
-            self._set_base(self.bookmark_button, PAPER, text="☆  收藏", fg=GREEN, highlightbackground=LINE, activebackground=SOFT, activeforeground=GREEN)
+            self._set_base(self.bookmark_button, PAPER, text="☆ 收藏" if self.compact else "☆  收藏", fg=GREEN, highlightbackground=LINE, activebackground=SOFT, activeforeground=GREEN)
 
     def _see_selected(self):
         if self.selected in self.rows:

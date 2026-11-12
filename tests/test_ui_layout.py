@@ -70,8 +70,23 @@ def assert_layout(app):
         x, y, width, height = frame_in_root(widget, app.root)
         assert x + width <= root_w and y + height <= root_h, widget
     line = app.detail_text.tk.call("font", "metrics", app.detail_text.cget("font"), "-linespace")
-    assert app.detail_text.winfo_height() >= 3 * line
-    assert app.results_text.winfo_height() >= 0.45 * app.content.winfo_height()
+    if app.compact or app.preferences.font_size > 14:
+        assert app.detail_text.winfo_height() >= line
+    else:
+        assert app.detail_text.winfo_height() >= 3 * line
+        assert app.results_text.winfo_height() >= 0.45 * app.content.winfo_height()
+
+
+def exercise_modes(app):
+    app.query.set("先知")
+    app.search()
+    wait_for_result(app)
+    assert_layout(app)
+    app.read_selected()
+    assert app.mode == "chapter"
+    assert_layout(app)
+    app.show_bookmarks()
+    assert_layout(app)
 
 
 @pytest.mark.parametrize("scale", [1.0, 1.25, 1.5, 2.0])
@@ -82,14 +97,46 @@ def test_minimum_window_keeps_every_control_visible(tmp_path, scale, make_root):
         assert all(actual <= design for actual, design in zip(root.minsize(), app.design_size(MIN_SIZE)))
         root.geometry("%dx%d" % app.design_size(MIN_SIZE))
         wait_for_result(app)
-        app.query.set("先知")
-        app.search()
+        exercise_modes(app)
+        assert not app.compact
+    finally:
+        app.close()
+
+
+@pytest.mark.parametrize("scale", [1.0, 1.25, 1.5, 2.0])
+@pytest.mark.parametrize("font_size", [12, 20])
+def test_screen_limited_window_on_1080p_keeps_actions_visible(tmp_path, scale, font_size, make_root):
+    # A 1920x1080 screen caps the minimum window below the design size at high
+    # scaling; the compact layout must still keep every action on screen.
+    root = make_root(scale)
+    app = BibleApp(root, tmp_path)
+    try:
+        (min_w, min_h), _ = app.window_sizes(1920, 1080)
+        root.geometry(f"{min_w}x{min_h}")
         wait_for_result(app)
-        assert_layout(app)
-        app.read_selected()
-        assert app.mode == "chapter"
-        assert_layout(app)
-        app.show_bookmarks()
+        app.preferences.font_size = font_size
+        app._apply_text_fonts()
+        exercise_modes(app)
+        assert app.compact == (min_h < app.design_size(MIN_SIZE)[1] - 1)
+    finally:
+        app.close()
+
+
+def test_compact_layout_restores_full_layout(tmp_path, make_root):
+    root = make_root(1.0)
+    app = BibleApp(root, tmp_path)
+    try:
+        wait_for_result(app)
+        width, height = app.design_size(MIN_SIZE)
+        root.minsize(1, 1)  # As if a small screen had capped the minimum size.
+        root.geometry(f"{width}x{height - 120}")
+        root.update()
+        assert app.compact and not app.detail_hint.winfo_ismapped()
+        assert app.context_button.winfo_manager() == "grid" and str(app.context_button.grid_info()["in"]) == str(app.actions)
+        root.geometry(f"{width}x{height}")
+        root.update()
+        assert not app.compact and app.detail_hint.winfo_ismapped() and app.page_subtitle.winfo_ismapped()
+        assert str(app.context_button.grid_info()["in"]) == str(app.detail)
         assert_layout(app)
     finally:
         app.close()
